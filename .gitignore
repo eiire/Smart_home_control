@@ -1,2 +1,5 @@
 .idea/*
 __pycache__/*
+coursera_house/__pycache__/*
+coursera_house/core/__pycache__/*
+tests/__pycache__/*

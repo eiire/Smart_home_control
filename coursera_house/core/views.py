@@ -13,40 +13,48 @@ class ControllerView(FormView):
     template_name = 'core/control.html'
     success_url = reverse_lazy('form')
     headers = {'Authorization': 'Bearer {}'.format(settings.SMART_HOME_ACCESS_TOKEN)}
-    list_sensors = requests.get(settings.SMART_HOME_API_URL, headers=headers).json()["data"]
+    state_controllers = requests.get(settings.SMART_HOME_API_URL, headers=headers).json()["data"]
 
     def get_context_data(self, **kwargs):
         context = super(ControllerView, self).get_context_data()
-        context['data'] = val_sensors(self.list_sensors)
+        context['data'] = val_sensors(self.state_controllers)
         return context
 
     def get_initial(self):
+        self.state_controllers = requests.get(settings.SMART_HOME_API_URL, headers=self.headers).json()["data"]
+
         return {
             'bedroom_target_temperature':
                 Setting.objects.get(controller_name="bedroom_target_temperature").value,
             'hot_water_target_temperature':
                 Setting.objects.get(controller_name="hot_water_target_temperature").value,
             'bedroom_light':
-                val_sensors(self.list_sensors)['bedroom_light'],
+                val_sensors(self.state_controllers)['bedroom_light'],
             'bathroom_light':
-                val_sensors(self.list_sensors)['bathroom_light'],
+                val_sensors(self.state_controllers)['bathroom_light'],
         }
 
     def form_valid(self, form):
         temp_bedroom = Setting.objects.get(controller_name="bedroom_target_temperature")
         temp_bedroom.value = form["bedroom_target_temperature"].value()
         temp_bedroom.save()
+
         temp_water = Setting.objects.get(controller_name="hot_water_target_temperature")
         temp_water.value = form["hot_water_target_temperature"].value()
         temp_water.save()
+
+        json = {"controllers": [{"name": "bedroom_light", "value": form['bedroom_light'].value()},
+                                {"name": "bathroom_light", "value": form['bathroom_light'].value()}]
+                }
+        requests.post(settings.SMART_HOME_API_URL, headers=self.headers, json=json)
         
         return super(ControllerView, self).form_valid(form)
 
 
-def val_sensors(list_sensors):
-    new_dict_sensors = {}
+def val_sensors(state_controllers):
+    comfort_dict = {}
 
-    for sensor in list_sensors:
-        new_dict_sensors.update({sensor["name"]: sensor["value"]})
+    for sensor in state_controllers:
+        comfort_dict.update({sensor["name"]: sensor["value"]})
 
-    return new_dict_sensors
+    return comfort_dict

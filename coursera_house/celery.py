@@ -17,5 +17,4 @@ from coursera_house.core.tasks import smart_home_manager
 
 @app.on_after_configure.connect
 def setup_periodic_tasks(sender, **kwargs):
-    print("ff")
     sender.add_periodic_task(5, smart_home_manager.s(), name='Check Smart Home')
