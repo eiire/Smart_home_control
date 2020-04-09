@@ -2,7 +2,6 @@ from __future__ import absolute_import, unicode_literals
 from celery import task
 from django.core.mail import get_connection, send_mail
 from django.http import HttpResponse, JsonResponse
-# from .. import settings
 from django.conf import settings
 from .models import Setting
 import requests
@@ -11,11 +10,15 @@ import requests
 @task()
 def smart_home_manager():
     headers = {'Authorization': 'Bearer {}'.format(settings.SMART_HOME_ACCESS_TOKEN)}
-    state_controllers = comfort_dict(requests.get(settings.SMART_HOME_API_URL, headers=headers).json()["data"])
-    fixed_state_controllers = check_state_controllers(dict(state_controllers))
+    answear = requests.get(settings.SMART_HOME_API_URL, headers=headers)
+    if answear.status_code == 200:
+        state_controllers = comfort_dict(answear.json()["data"])
+        fixed_state_controllers = check_state_controllers(dict(state_controllers))
 
-    if check_change_controllers(state_controllers, fixed_state_controllers):
-        requests.post(settings.SMART_HOME_API_URL, headers=headers, json=create_post(fixed_state_controllers))
+        if check_change_controllers(state_controllers, fixed_state_controllers):
+            requests.post(settings.SMART_HOME_API_URL, headers=headers, json=create_post(fixed_state_controllers))
+    else:
+        return HttpResponse(status=502)
 
 
 def check_state_controllers(state_controllers):
